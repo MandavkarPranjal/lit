@@ -1,5 +1,6 @@
 mod config;
 mod git_config;
+mod tui_interface;
 
 use clap::{Arg, Command};
 use config::{load_config, save_config, GitConfig};
@@ -73,6 +74,7 @@ fn main() {
                         .index(1),
                 ),
         )
+        .subcommand(Command::new("show-tui").about("Show the terminal user interface"))
         .get_matches();
 
     let mut config = load_config();
@@ -128,4 +130,9 @@ fn main() {
             println!("Profile '{}' does not exist.", name);
         }
     }
+    // else if let Some(_) = matches.subcommand_matches("show-tui") {
+    //     if let Err(e) = tui_interface::run_tui() {
+    //         eprintln!("Error running TUI: {}", e);
+    //     }
+    // }
 }
