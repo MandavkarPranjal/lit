@@ -72,8 +72,9 @@ fn run_app<B: tui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Result<(
 
             f.render_stateful_widget(list, chunks[0], &mut state);
 
-            let paragraph = Paragraph::new("Use arrow keys to navigate and Enter to select.")
-                .block(Block::default().title("Instructions").borders(Borders::ALL));
+            let paragraph =
+                Paragraph::new("Use arrow keys or 'j', 'k' to navigate and Enter to select.")
+                    .block(Block::default().title("Instructions").borders(Borders::ALL));
             f.render_widget(paragraph, chunks[1]);
         })?;
 
@@ -85,13 +86,13 @@ fn run_app<B: tui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Result<(
                 last_event_time = Instant::now();
 
                 match code {
-                    KeyCode::Up => {
+                    KeyCode::Up | KeyCode::Char('k') => {
                         let i = state.selected().unwrap_or(0);
                         if i > 0 {
                             state.select(Some(i - 1));
                         }
                     }
-                    KeyCode::Down => {
+                    KeyCode::Down | KeyCode::Char('j') => {
                         let i = state.selected().unwrap_or(0);
                         if i < options.len() - 1 {
                             state.select(Some(i + 1));
