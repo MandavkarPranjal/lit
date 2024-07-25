@@ -1,5 +1,11 @@
-use crossterm::event::{self, KeyCode, KeyEvent};
-use std::io;
+use crossterm::{
+    cursor,
+    event::{self, DisableMouseCapture, EnableMouseCapture, KeyCode, KeyEvent},
+    execute,
+    terminal::{self, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
+};
+use std::io::{self, Write};
+use std::time::{Duration, Instant};
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -8,10 +14,33 @@ use tui::{
 };
 
 pub fn run_tui() -> io::Result<()> {
-    let stdout = io::stdout();
+    let mut stdout = io::stdout();
+    execute!(
+        stdout,
+        EnterAlternateScreen,
+        EnableMouseCapture,
+        Clear(ClearType::All),
+        cursor::MoveTo(0, 0)
+    )?;
+    terminal::enable_raw_mode()?;
+
     let backend = CrosstermBackend::new(stdout.lock());
     let mut terminal = Terminal::new(backend)?;
 
+    let result = run_app(&mut terminal);
+
+    terminal::disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
+    terminal.show_cursor()?;
+
+    result
+}
+
+fn run_app<B: tui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
     let mut state = ListState::default();
     let options = vec![
         "Add Profile",
@@ -22,6 +51,7 @@ pub fn run_tui() -> io::Result<()> {
     ];
 
     state.select(Some(0)); // Initialize with the first option selected
+    let mut last_event_time = Instant::now();
 
     loop {
         terminal.draw(|f| {
@@ -47,8 +77,13 @@ pub fn run_tui() -> io::Result<()> {
             f.render_widget(paragraph, chunks[1]);
         })?;
 
-        if event::poll(std::time::Duration::from_millis(100))? {
+        if event::poll(Duration::from_millis(100))? {
             if let event::Event::Key(KeyEvent { code, .. }) = event::read()? {
+                if last_event_time.elapsed() < Duration::from_millis(200) {
+                    continue; // Skip the event if it's too soon after the last one
+                }
+                last_event_time = Instant::now();
+
                 match code {
                     KeyCode::Up => {
                         let i = state.selected().unwrap_or(0);

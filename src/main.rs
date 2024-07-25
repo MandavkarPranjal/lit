@@ -129,10 +129,9 @@ fn main() {
         } else {
             println!("Profile '{}' does not exist.", name);
         }
+    } else if let Some(_) = matches.subcommand_matches("show-tui") {
+        if let Err(e) = tui_interface::run_tui() {
+            eprintln!("Error running TUI: {}", e);
+        }
     }
-    // else if let Some(_) = matches.subcommand_matches("show-tui") {
-    //     if let Err(e) = tui_interface::run_tui() {
-    //         eprintln!("Error running TUI: {}", e);
-    //     }
-    // }
 }
