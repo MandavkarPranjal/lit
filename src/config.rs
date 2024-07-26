@@ -26,3 +26,14 @@ pub fn save_config(config: &Config) {
     let config_str = serde_json::to_string_pretty(config).unwrap();
     fs::write("config.json", config_str).unwrap();
 }
+
+pub fn list_profiles() -> Result<(), Box<dyn std::error::Error>> {
+    let config = load_config();
+    println!("Profiles:");
+    for (name, profile) in config.profiles {
+        println!("Profile: {}", name);
+        println!("  User Name: {}", profile.user_name);
+        println!("  User Email: {}", profile.user_email);
+    }
+    Ok(())
+}

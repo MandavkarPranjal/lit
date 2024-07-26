@@ -1,5 +1,6 @@
 mod config;
 mod git_config;
+mod input;
 mod tui_interface;
 
 use clap::{Arg, Command};
@@ -75,6 +76,7 @@ fn main() {
                 ),
         )
         .subcommand(Command::new("show-tui").about("Show the terminal user interface"))
+        .subcommand(Command::new("list-profile").about("List all profiles"))
         .get_matches();
 
     let mut config = load_config();
@@ -132,6 +134,10 @@ fn main() {
     } else if let Some(_) = matches.subcommand_matches("show-tui") {
         if let Err(e) = tui_interface::run_tui() {
             eprintln!("Error running TUI: {}", e);
+        }
+    } else if let Some(_) = matches.subcommand_matches("list-profile") {
+        if let Err(e) = config::list_profiles() {
+            eprintln!("Error listing profiles: {}", e);
         }
     }
 }
