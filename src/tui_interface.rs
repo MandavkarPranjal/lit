@@ -44,12 +44,12 @@ pub fn run_tui() -> io::Result<()> {
 
 fn run_app<B: tui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Result<()> {
     let mut state = ListState::default();
-    let options = vec![
-        "Add Profile",
-        "Switch Profile",
-        "Update Profile",
-        "Delete Profile",
-        // "Exit",
+    let mut options: Vec<String> = vec![
+        "Add Profile".to_string(),
+        "Switch Profile".to_string(),
+        "Update Profile".to_string(),
+        "Delete Profile".to_string(),
+        "List Profiles".to_string(),
     ];
 
     state.select(Some(0)); // Initialize with the first option selected
@@ -58,6 +58,7 @@ fn run_app<B: tui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Result<(
     let mut profile_name = String::new();
     let mut user_name = String::new();
     let mut user_email = String::new();
+    let config = load_config();
 
     loop {
         terminal.draw(|f| {
@@ -94,6 +95,21 @@ fn run_app<B: tui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Result<(
                     );
                     f.render_widget(paragraph, chunks[1]);
                 }
+                InputMode::ListingProfiles => {
+                    let profile_items: Vec<ListItem> = config
+                        .profiles
+                        .keys()
+                        .map(|p| ListItem::new(p.clone()))
+                        .collect();
+                    let profiles_list = List::new(profile_items)
+                        .block(Block::default().title("Profiles").borders(Borders::ALL));
+
+                    f.render_widget(profiles_list, chunks[0]);
+
+                    let instructions = Paragraph::new("Press 'b' to go back to the main menu.")
+                        .block(Block::default().title("Instructions").borders(Borders::ALL));
+                    f.render_widget(instructions, chunks[1]);
+                }
                 InputMode::Normal => {
                     let items: Vec<ListItem> = options
                         .iter()
@@ -127,11 +143,13 @@ fn run_app<B: tui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Result<(
                     break;
                 }
 
+                let options_slice: Vec<&str> = options.iter().map(AsRef::as_ref).collect();
+
                 if let Err(err) = handle_input(
                     key,
                     &mut input_mode,
                     &mut state,
-                    &options,
+                    &options_slice[..],
                     &mut profile_name,
                     &mut user_name,
                     &mut user_email,
@@ -139,40 +157,8 @@ fn run_app<B: tui::backend::Backend>(terminal: &mut Terminal<B>) -> io::Result<(
                     eprintln!("Error handling input: {:?}", err);
                     break;
                 }
-
-                // if input_mode == InputMode::Normal && state.selected() == Some(options.len() - 1) {
-                //     break;
-                // }
             }
         }
     }
     Ok(())
-}
-
-// fn add_profile(profile_name: &str, user_name: &str, user_email: &str) -> io::Result<()> {
-//     let mut config = load_config();
-//     config.profiles.insert(
-//         profile_name.to_string(),
-//         GitConfig {
-//             user_name: user_name.to_string(),
-//             user_email: user_email.to_string(),
-//         },
-//     );
-//     save_config(&config);
-//     Ok(())
-// }
-
-fn switch_profile() {
-    println!("Switch Profile functionality.");
-    // Implement functionality to switch profiles.
-}
-
-fn update_profile() {
-    println!("Update Profile functionality.");
-    // Implement functionality to update a profile.
-}
-
-fn delete_profile() {
-    println!("Delete Profile functionality.");
-    // Implement functionality to delete a profile.
 }

@@ -1,5 +1,3 @@
-// src/input.rs
-
 use crossterm::event::{KeyCode, KeyEvent};
 use std::io;
 use tui::widgets::ListState;
@@ -10,6 +8,7 @@ pub enum InputMode {
     InputProfileName,
     InputUserName,
     InputUserEmail,
+    ListingProfiles, // Add this variant
 }
 
 pub fn handle_input(
@@ -41,7 +40,7 @@ pub fn handle_input(
                     Some(1) => switch_profile(),
                     Some(2) => update_profile(),
                     Some(3) => delete_profile(),
-                    Some(4) => return Ok(()), // Handle "Exit" option
+                    Some(4) => *input_mode = InputMode::ListingProfiles, // Switch to listing profiles
                     _ => {}
                 },
                 _ => {}
@@ -105,6 +104,12 @@ pub fn handle_input(
                 user_email.clear();
                 user_name.clear();
                 profile_name.clear();
+            }
+            _ => {}
+        },
+        InputMode::ListingProfiles => match key.code {
+            KeyCode::Char('b') => {
+                *input_mode = InputMode::Normal; // Go back to the main menu
             }
             _ => {}
         },
