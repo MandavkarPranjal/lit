@@ -8,44 +8,48 @@ pub enum InputMode {
     InputProfileName,
     InputUserName,
     InputUserEmail,
-    ListingProfiles, // Add this variant
+    ListingProfiles,
+    DeleteProfile,
+    ConfirmDeleteProfile,
 }
 
 pub fn handle_input(
     key: KeyEvent,
     input_mode: &mut InputMode,
     state: &mut ListState,
+    delete_state: &mut ListState,
     options: &[&str],
     profile_name: &mut String,
     user_name: &mut String,
     user_email: &mut String,
+    selected_profile_to_delete: &mut Option<String>,
+    config: &mut crate::config::Config,
+    delete_options: &Vec<String>,
 ) -> io::Result<()> {
     match input_mode {
-        InputMode::Normal => {
-            match key.code {
-                KeyCode::Up | KeyCode::Char('k') => {
-                    let i = state.selected().unwrap_or(0);
-                    if i > 0 {
-                        state.select(Some(i - 1));
-                    }
+        InputMode::Normal => match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                let i = state.selected().unwrap_or(0);
+                if i > 0 {
+                    state.select(Some(i - 1));
                 }
-                KeyCode::Down | KeyCode::Char('j') => {
-                    let i = state.selected().unwrap_or(0);
-                    if i < options.len() - 1 {
-                        state.select(Some(i + 1));
-                    }
-                }
-                KeyCode::Enter => match state.selected() {
-                    Some(0) => *input_mode = InputMode::InputProfileName,
-                    Some(1) => switch_profile(),
-                    Some(2) => update_profile(),
-                    Some(3) => delete_profile(),
-                    Some(4) => *input_mode = InputMode::ListingProfiles, // Switch to listing profiles
-                    _ => {}
-                },
-                _ => {}
             }
-        }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let i = state.selected().unwrap_or(0);
+                if i < options.len() - 1 {
+                    state.select(Some(i + 1));
+                }
+            }
+            KeyCode::Enter => match state.selected() {
+                Some(0) => *input_mode = InputMode::InputProfileName,
+                Some(1) => switch_profile(),
+                Some(2) => update_profile(),
+                Some(3) => *input_mode = InputMode::DeleteProfile,
+                Some(4) => *input_mode = InputMode::ListingProfiles,
+                _ => {}
+            },
+            _ => {}
+        },
         InputMode::InputProfileName => match key.code {
             KeyCode::Char(c) => {
                 profile_name.push(c);
@@ -92,7 +96,15 @@ pub fn handle_input(
             }
             KeyCode::Enter => {
                 if !user_email.is_empty() {
-                    add_profile(profile_name, user_name, user_email)?;
+                    // Add profile to config
+                    config.profiles.insert(
+                        profile_name.clone(),
+                        crate::config::GitConfig {
+                            user_name: user_name.clone(),
+                            user_email: user_email.clone(),
+                        },
+                    );
+                    crate::config::save_config(config);
                     *input_mode = InputMode::Normal;
                     profile_name.clear();
                     user_name.clear();
@@ -108,8 +120,47 @@ pub fn handle_input(
             _ => {}
         },
         InputMode::ListingProfiles => match key.code {
-            KeyCode::Char('b') => {
-                *input_mode = InputMode::Normal; // Go back to the main menu
+            KeyCode::Char('b') | KeyCode::Esc => {
+                *input_mode = InputMode::Normal;
+            }
+            _ => {}
+        },
+        InputMode::DeleteProfile => match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                let i = delete_state.selected().unwrap_or(0);
+                if i > 0 {
+                    delete_state.select(Some(i - 1));
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let i = delete_state.selected().unwrap_or(0);
+                if i < delete_options.len() - 1 {
+                    delete_state.select(Some(i + 1));
+                }
+            }
+            KeyCode::Enter => {
+                if let Some(i) = delete_state.selected() {
+                    *selected_profile_to_delete = Some(delete_options[i].clone());
+                    *input_mode = InputMode::ConfirmDeleteProfile;
+                }
+            }
+            KeyCode::Char('b') | KeyCode::Esc => {
+                *input_mode = InputMode::Normal;
+            }
+            _ => {}
+        },
+        InputMode::ConfirmDeleteProfile => match key.code {
+            KeyCode::Char('y') => {
+                if let Some(ref profile) = selected_profile_to_delete {
+                    config.profiles.remove(profile);
+                    crate::config::save_config(config);
+                }
+                *input_mode = InputMode::Normal;
+                *selected_profile_to_delete = None;
+            }
+            KeyCode::Char('n') | KeyCode::Esc => {
+                *input_mode = InputMode::Normal;
+                *selected_profile_to_delete = None;
             }
             _ => {}
         },
@@ -117,30 +168,10 @@ pub fn handle_input(
     Ok(())
 }
 
-fn add_profile(profile_name: &str, user_name: &str, user_email: &str) -> io::Result<()> {
-    let mut config = crate::config::load_config();
-    config.profiles.insert(
-        profile_name.to_string(),
-        crate::config::GitConfig {
-            user_name: user_name.to_string(),
-            user_email: user_email.to_string(),
-        },
-    );
-    crate::config::save_config(&config);
-    Ok(())
-}
-
 fn switch_profile() {
-    println!("Switch Profile functionality.");
-    // Implement functionality to switch profiles.
+    // Implement switching profile functionality here
 }
 
 fn update_profile() {
-    println!("Update Profile functionality.");
-    // Implement functionality to update a profile.
-}
-
-fn delete_profile() {
-    println!("Delete Profile functionality.");
-    // Implement functionality to delete a profile.
+    // Implement updating profile functionality here
 }
