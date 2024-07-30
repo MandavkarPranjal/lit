@@ -11,6 +11,7 @@ pub enum InputMode {
     ListingProfiles,
     DeleteProfile,
     ConfirmDeleteProfile,
+    SwitchProfile,
 }
 
 pub fn handle_input(
@@ -18,15 +19,18 @@ pub fn handle_input(
     input_mode: &mut InputMode,
     state: &mut ListState,
     delete_state: &mut ListState,
+    switch_state: &mut ListState,
     options: &[&str],
     profile_name: &mut String,
     user_name: &mut String,
     user_email: &mut String,
     selected_profile_to_delete: &mut Option<String>,
+    selected_profile_to_switch: &mut Option<String>,
     config: &mut crate::config::Config,
-    delete_options: &Vec<String>,
+    delete_options: &[String],
+    switch_options: &[String],
 ) -> io::Result<()> {
-    match input_mode {
+    match *input_mode {
         InputMode::Normal => match key.code {
             KeyCode::Up | KeyCode::Char('k') => {
                 let i = state.selected().unwrap_or(0);
@@ -40,14 +44,16 @@ pub fn handle_input(
                     state.select(Some(i + 1));
                 }
             }
-            KeyCode::Enter => match state.selected() {
-                Some(0) => *input_mode = InputMode::InputProfileName,
-                Some(1) => switch_profile(),
-                Some(2) => update_profile(),
-                Some(3) => *input_mode = InputMode::DeleteProfile,
-                Some(4) => *input_mode = InputMode::ListingProfiles,
-                _ => {}
-            },
+            KeyCode::Enter => {
+                match state.selected() {
+                    Some(0) => *input_mode = InputMode::InputProfileName,
+                    Some(1) => *input_mode = InputMode::SwitchProfile,
+                    Some(2) => *input_mode = InputMode::InputUserName, // Assuming this is for updating profile
+                    Some(3) => *input_mode = InputMode::DeleteProfile,
+                    Some(4) => *input_mode = InputMode::ListingProfiles,
+                    _ => {}
+                }
+            }
             _ => {}
         },
         InputMode::InputProfileName => match key.code {
@@ -149,6 +155,38 @@ pub fn handle_input(
             }
             _ => {}
         },
+        InputMode::SwitchProfile => match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                let i = switch_state.selected().unwrap_or(0);
+                if i > 0 {
+                    switch_state.select(Some(i - 1));
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                let i = switch_state.selected().unwrap_or(0);
+                if i < switch_options.len() - 1 {
+                    switch_state.select(Some(i + 1));
+                }
+            }
+            KeyCode::Enter => {
+                if let Some(i) = switch_state.selected() {
+                    let selected_profile = &switch_options[i];
+                    if config.profiles.contains_key(selected_profile) {
+                        // config.current_profile = selected_profile.clone();
+                        let profile = config.profiles.get(selected_profile).unwrap();
+                        crate::git_config::update_git_config(
+                            &profile.user_name,
+                            &profile.user_email,
+                        );
+                        *input_mode = InputMode::Normal;
+                    }
+                }
+            }
+            KeyCode::Char('b') | KeyCode::Esc => {
+                *input_mode = InputMode::Normal;
+            }
+            _ => {}
+        },
         InputMode::ConfirmDeleteProfile => match key.code {
             KeyCode::Char('y') => {
                 if let Some(ref profile) = selected_profile_to_delete {
@@ -166,12 +204,4 @@ pub fn handle_input(
         },
     }
     Ok(())
-}
-
-fn switch_profile() {
-    // Implement switching profile functionality here
-}
-
-fn update_profile() {
-    // Implement updating profile functionality here
 }
